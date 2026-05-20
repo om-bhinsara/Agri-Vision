@@ -17,6 +17,8 @@ from PIL import Image
 from ultralytics import YOLO
 import json
 from jinja2 import Environment, FileSystemLoader
+from services.weather_service import get_weather, geocode_city, generate_weather_recommendations
+from services.yield_service import estimate_yield
 
 load_dotenv()
 
@@ -184,11 +186,10 @@ def infer_growth_stage(image):
         result["raw"] = boxes
     return result
 
-def generate_recommendations(disease_result, growth_result):
+def generate_recommendations(disease_result, growth_result, weather=None):
     recs = []
-    # Disease-based recommendations
-    dclass, dscore = disease_result["predicted_class"], disease_result["confidence"]
-    # Preset disease recommendations (feel free to expand for each class)
+ 
+    dclass = disease_result["predicted_class"]
     instr_map = {
         "Aphids": [
             "Inspect leaves closely for clusters of small pests.",
@@ -224,13 +225,12 @@ def generate_recommendations(disease_result, growth_result):
         ]
     }
     recs.extend(instr_map.get(dclass, ["Practice general crop hygiene."]))
-    # Score-based adjustment
+ 
     if disease_result["health_score"] < 50:
         recs.append("Consult an agricultural expert urgently for low health score.")
     elif disease_result["health_score"] < 70:
         recs.append("Increase frequency of crop monitoring based on moderate health.")
-
-    # Growth stage based recommendations
+ 
     gmain = growth_result.get("main_class", None)
     grow_map = {
         "Cotton Blossom": [
@@ -256,8 +256,13 @@ def generate_recommendations(disease_result, growth_result):
     }
     if gmain in grow_map:
         recs.extend(grow_map[gmain])
-    # Recommend only top 5 relevant
-    return recs[:5]
+ 
+    # ── NEW: inject weather-aware recommendations ──
+    if weather:
+        weather_recs = generate_weather_recommendations(weather)
+        recs.extend(weather_recs)
+ 
+    return recs[:6]  # increased cap slightly to accommodate weather tips
 def resize_image(image, max_dim=MAX_INFERENCE_DIMENSION):
     height, width = image.shape[:2]
     if max(height, width) <= max_dim:
@@ -422,8 +427,39 @@ def analyze():
             compressed_rgb = resize_image(image_rgb, MAX_INFERENCE_DIMENSION)
             image_b64 = encode_image_for_display(image)
             results = analyze_image(compressed_rgb)
+
+            # ── Weather enrichment ──
+            lat = request.form.get("lat", type=float)
+            lon = request.form.get("lon", type=float)
+            city = request.form.get("city", type=str)
+            weather = None
+            if lat and lon:
+                owm_key = os.getenv("OPENWEATHER_API_KEY")
+                weather = get_weather(lat, lon, owm_key)
+            elif city:
+                geo = geocode_city(city)
+                if geo:
+                    owm_key = os.getenv("OPENWEATHER_API_KEY")
+                    weather = get_weather(geo["lat"], geo["lon"], owm_key)
+            if weather and results.get("disease") and results.get("growth"):
+                extra_recs = generate_weather_recommendations(weather)
+                results["recommendations"] = (results.get("recommendations", []) + extra_recs)[:6]
+                results["weather"] = weather
+
+            # ── Yield estimation ──
+            field_acres = request.form.get("field_acres", type=float) or 1.0
+            yield_estimate = None
+            if results.get("disease") and results.get("growth"):
+                yield_estimate = estimate_yield(
+                    results["disease"],
+                    results["growth"],
+                    weather,
+                    field_acres,
+                )
+
             if results.get("error"):
                 raise ValueError(results["error"])
+
             # Render UI, pass bounding boxes for JS drawing, raw json, etc
             return render_template(
                 "results.html",
@@ -432,7 +468,9 @@ def analyze():
                 image_b64=image_b64,
                 img_shape={"width": image.shape[1], "height": image.shape[0]},
                 raw_json=json.dumps(results, indent=2),
-                timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                weather=weather,
+                yield_estimate=yield_estimate, 
             )
         except Exception as e:
             logger.error(f"Analysis error: {e}")
@@ -612,6 +650,36 @@ def tutorials():
 @app.route('/stories')
 def stories():
     return render_template("stories.html")
+
+@app.route("/api/weather")
+def api_weather():
+    """
+    GET /api/weather?lat=28.6&lon=77.2
+    GET /api/weather?city=Delhi
+    Returns current weather data for a location.
+    """
+    lat = request.args.get("lat", type=float)
+    lon = request.args.get("lon", type=float)
+    city = request.args.get("city", type=str)
+ 
+    if city and not (lat and lon):
+        geo = geocode_city(city)
+        if not geo:
+            return jsonify({"error": f"Could not geocode city: {city}"}), 404
+        lat, lon = geo["lat"], geo["lon"]
+ 
+    if lat is None or lon is None:
+        return jsonify({"error": "Provide lat & lon, or city"}), 400
+ 
+    owm_key = os.getenv("OPENWEATHER_API_KEY")
+    weather = get_weather(lat, lon, owm_key)
+ 
+    if not weather:
+        return jsonify({"error": "Weather data unavailable"}), 503
+ 
+    weather["weather_recommendations"] = generate_weather_recommendations(weather)
+    return jsonify({"status": "success", "weather": weather})
+ 
 
 if __name__ == '__main__':
     logger.info("=" * 60)
