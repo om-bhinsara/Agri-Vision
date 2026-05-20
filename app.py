@@ -18,6 +18,7 @@ from ultralytics import YOLO
 import json
 from jinja2 import Environment, FileSystemLoader
 from services.weather_service import get_weather, geocode_city, generate_weather_recommendations
+from services.yield_service import estimate_yield
 
 load_dotenv()
 
@@ -431,6 +432,17 @@ def analyze():
                 results["recommendations"] = (results.get("recommendations", []) + extra_recs)[:6]
                 results["weather"] = weather
 
+            # ── Yield estimation ──
+            field_acres = request.form.get("field_acres", type=float) or 1.0
+            yield_estimate = None
+            if results.get("disease") and results.get("growth"):
+                yield_estimate = estimate_yield(
+                    results["disease"],
+                    results["growth"],
+                    weather,
+                    field_acres,
+                )
+
             if results.get("error"):
                 raise ValueError(results["error"])
 
@@ -444,6 +456,7 @@ def analyze():
                 raw_json=json.dumps(results, indent=2),
                 timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 weather=weather,
+                yield_estimate=yield_estimate, 
             )
         except Exception as e:
             logger.error(f"Analysis error: {e}")

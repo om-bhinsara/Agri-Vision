@@ -170,6 +170,31 @@ function useMyLocation() {
                         onchange="previewImage(this)"
                     />
                 </div>
+                <!-- Field Size Input -->
+                <div style="margin-top: 1.5rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                    <label for="field-acres" style="font-size:0.9rem; color:#495057; white-space:nowrap;">
+                        🌾 Field Size (optional):
+                    </label>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <input
+                            type="number"
+                            name="field_acres"
+                            id="field-acres"
+                            min="0.1"
+                            max="10000"
+                            step="0.1"
+                            placeholder="e.g. 2.5"
+                            style="
+                                width: 100px; padding: 0.5rem 0.75rem;
+                                border: 1px solid #ced4da; border-radius: 8px;
+                                font-size: 0.9rem; color: #495057;
+                            "
+                        />
+                        <span style="font-size:0.85rem; color:#6c757d;">acres</span>
+                    </div>
+                    <span style="font-size:0.8rem; color:#adb5bd;">Leave blank for per-acre estimate</span>
+                </div>
+
                 <div style="margin-top: 3rem;">
                     <button type="submit" class="btn btn-primary btn-large action-btn">
                         <i class="fas fa-magnifying-glass"></i> Start AI Analysis

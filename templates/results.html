@@ -211,6 +211,110 @@
     </p>
 </div>
 {% endif %}
+{% if yield_estimate %}
+<div class="yield-card" style="
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
+    border: 1px solid #b7ebc0;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+">
+    <h3 style="margin: 0 0 0.25rem; color: #1a7f37; font-size: 1.1rem;">
+        📊 Yield Estimate
+    </h3>
+    <p style="margin: 0 0 1.25rem; font-size: 0.82rem; color: #6c757d;">
+        Based on growth stage, crop health{% if weather %}, and current weather{% endif %}.
+        Reference: ICAR Bt cotton baseline (20 q/acre).
+    </p>
+ 
+    <!-- Main yield range -->
+    <div style="display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+        <div style="
+            flex:1; min-width:160px; text-align:center;
+            background:white; border-radius:12px; padding:1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        ">
+            <div style="font-size:0.75rem; color:#6c757d; margin-bottom:0.25rem;">
+                Per Acre
+            </div>
+            <div style="font-size:1.6rem; font-weight:700; color:#1a7f37;">
+                {{ yield_estimate.yield_min_acre }}–{{ yield_estimate.yield_max_acre }}
+            </div>
+            <div style="font-size:0.8rem; color:#6c757d;">quintals/acre</div>
+            <div style="font-size:0.75rem; color:#adb5bd; margin-top:0.2rem;">
+                {{ yield_estimate.yield_min_kg_ha }}–{{ yield_estimate.yield_max_kg_ha }} kg/ha
+            </div>
+        </div>
+ 
+        {% if yield_estimate.field_acres and yield_estimate.field_acres != 1.0 %}
+        <div style="
+            flex:1; min-width:160px; text-align:center;
+            background:white; border-radius:12px; padding:1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        ">
+            <div style="font-size:0.75rem; color:#6c757d; margin-bottom:0.25rem;">
+                Total ({{ yield_estimate.field_acres }} acres)
+            </div>
+            <div style="font-size:1.6rem; font-weight:700; color:#1a7f37;">
+                {{ yield_estimate.yield_min_total }}–{{ yield_estimate.yield_max_total }}
+            </div>
+            <div style="font-size:0.8rem; color:#6c757d;">quintals total</div>
+        </div>
+        {% endif %}
+ 
+        <div style="
+            flex:1; min-width:160px; text-align:center;
+            background:white; border-radius:12px; padding:1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        ">
+            <div style="font-size:0.75rem; color:#6c757d; margin-bottom:0.4rem;">Confidence</div>
+            <div style="font-size:1.3rem; font-weight:700; color:{{ yield_estimate.confidence_color }};">
+                {{ yield_estimate.confidence_label }}
+            </div>
+            <!-- Confidence bar -->
+            <div style="
+                background:#e9ecef; border-radius:4px; height:6px;
+                margin:0.4rem auto; width:80%;
+            ">
+                <div style="
+                    background:{{ yield_estimate.confidence_color }};
+                    width:{{ yield_estimate.confidence_pct }}%;
+                    height:100%; border-radius:4px;
+                    transition: width 0.6s ease;
+                "></div>
+            </div>
+            <div style="font-size:0.75rem; color:#adb5bd;">{{ yield_estimate.confidence_pct }}%</div>
+        </div>
+    </div>
+ 
+    <!-- Harvest advice -->
+    <div style="
+        background: white; border-radius: 10px; padding: 0.85rem 1rem;
+        margin-bottom: 1rem; border-left: 4px solid #1a7f37;
+        font-size: 0.88rem; color: #343a40;
+    ">
+        {{ yield_estimate.harvest_advice }}
+    </div>
+ 
+    <!-- Multiplier breakdown -->
+    <details style="font-size:0.82rem; color:#6c757d; cursor:pointer;">
+        <summary style="font-weight:600; color:#495057; margin-bottom:0.5rem;">
+            📐 How this was calculated
+        </summary>
+        <div style="margin-top:0.5rem; display:flex; flex-direction:column; gap:0.3rem;">
+            <div>🌱 <strong>Growth Stage</strong> ({{ yield_estimate.growth_stage }}): ×{{ yield_estimate.stage_multiplier }} — {{ yield_estimate.stage_note }}</div>
+            <div>🏥 <strong>Crop Health</strong> ({{ yield_estimate.health_score }}%): ×{{ yield_estimate.health_multiplier }} — {{ yield_estimate.health_note }}</div>
+            {% for note in yield_estimate.weather_notes %}
+            <div>☁️ <strong>Weather</strong>: ×{{ yield_estimate.weather_multiplier }} — {{ note }}</div>
+            {% endfor %}
+            <div style="margin-top:0.3rem; font-weight:600; color:#343a40;">
+                Combined multiplier: {{ yield_estimate.combined_multiplier }} × {{ yield_estimate.field_acres }} acres × 20 q/acre base
+            </div>
+        </div>
+    </details>
+</div>
+{% endif %}
             <!-- =========================================================
                 Recommendations Section Redesign
 
