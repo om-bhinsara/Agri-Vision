@@ -114,7 +114,35 @@ body {
     font-size: 15px;
     transition: background-color 0.4s ease, color 0.4s ease;
 }
+/* Keep default cursor */
+body {
+    cursor: default;
+}
 
+/* Trail dots */
+.trail-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    pointer-events: none;
+    z-index: 99999;
+
+    background: #4ade80;
+
+    box-shadow:
+        0 0 10px #4ade80,
+        0 0 20px #4ade80,
+        0 0 40px rgba(74, 222, 128, 0.7);
+
+    transform: translate(-50%, -50%);
+
+    opacity: 0.8;
+}
 .text-center {
     text-align: center;
 }
