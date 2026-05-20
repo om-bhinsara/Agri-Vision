@@ -2,6 +2,7 @@
 Agri-Vision Flask Application
 Unified inference for disease classification (ResNet50) and growth stage prediction (YOLOv8)
 """
+
 import json
 import logging
 import os
@@ -16,10 +17,16 @@ from flasgger import Swagger
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from jinja2 import Environment, FileSystemLoader
 from PIL import Image
+from services.weather_service import (
+    generate_weather_recommendations,
+    geocode_city,
+    get_weather,
+)
 from torchvision import transforms
 from ultralytics import YOLO
 from werkzeug.utils import secure_filename
-from services.weather_service import get_weather, geocode_city, generate_weather_recommendations
+
+from celery_worker import process_inference_task
 
 load_dotenv()
 
@@ -57,22 +64,22 @@ DISPLAY_IMAGE_MAX_DIMENSION = 1200
 DISPLAY_JPEG_QUALITY = 80
 
 disease_classes = [
-    "Aphids",  
-    "Army worm",  
-    "Bacterial blight",  
-    "Cotton Boll Rot",  
-    "Green Cotton Boll",  
-    "Healthy",  
-    "Powdery mildew",  
-    "Target Spot",  
+    "Aphids",
+    "Army worm",
+    "Bacterial blight",
+    "Cotton Boll Rot",
+    "Green Cotton Boll",
+    "Healthy",
+    "Powdery mildew",
+    "Target Spot",
 ]
 
 growth_stage_classes = [
-    "Cotton Blossom",  
-    "Cotton Bud",  
-    "Early Boll",  
-    "Matured Cotton Boll",  
-    "Split Cotton Boll",  
+    "Cotton Blossom",
+    "Cotton Bud",
+    "Early Boll",
+    "Matured Cotton Boll",
+    "Split Cotton Boll",
 ]
 
 resnet_model = None
@@ -121,7 +128,7 @@ def infer_disease(image):
             output = resnet_model(processed)
             probs = F.softmax(output, dim=1)
             confidence, prediction = torch.max(probs, 1)
-        probs_np = probs.numpy()  
+        probs_np = probs.numpy()
         class_idx = int(prediction.item())
         healthy_idx = disease_classes.index("Healthy")
         health_score = float(probs_np[0][healthy_idx]) * 100
@@ -236,12 +243,12 @@ def generate_recommendations(disease_result, growth_result, weather=None):
         ],
     }
     recs.extend(instr_map.get(dclass, ["Practice general crop hygiene."]))
- 
+
     if disease_result["health_score"] < 50:
         recs.append("Consult an agricultural expert urgently for low health score.")
     elif disease_result["health_score"] < 70:
         recs.append("Increase frequency of crop monitoring based on moderate health.")
- 
+
     gmain = growth_result.get("main_class", None)
     grow_map = {
         "Cotton Blossom": [
@@ -264,11 +271,11 @@ def generate_recommendations(disease_result, growth_result, weather=None):
     }
     if gmain in grow_map:
         recs.extend(grow_map[gmain])
- 
+
     if weather:
         weather_recs = generate_weather_recommendations(weather)
         recs.extend(weather_recs)
- 
+
     return recs[:6]
 
 
@@ -310,6 +317,7 @@ def analyze_image(image):
 
 def encode_image_for_display(image):
     import base64
+
     display_image = resize_image(image, DISPLAY_IMAGE_MAX_DIMENSION)
     encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), DISPLAY_JPEG_QUALITY]
     _, buffer = cv2.imencode(".jpg", display_image, encode_params)
@@ -458,7 +466,9 @@ def analyze():
                     weather = get_weather(geo["lat"], geo["lon"], owm_key)
             if weather and results.get("disease") and results.get("growth"):
                 extra_recs = generate_weather_recommendations(weather)
-                results["recommendations"] = (results.get("recommendations", []) + extra_recs)[:6]
+                results["recommendations"] = (
+                    results.get("recommendations", []) + extra_recs
+                )[:6]
                 results["weather"] = weather
 
             if results.get("error"):
@@ -626,7 +636,7 @@ def demo():
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
     """
-    Analyze a cotton crop image for disease and growth stage.
+    Trigger async analysis of a cotton crop image for disease and growth stage.
     ---
     tags:
       - API
@@ -639,24 +649,8 @@ def api_analyze():
         required: true
         description: Upload the cotton crop image (PNG, JPG, JPEG, GIF) to be analyzed.
     responses:
-      200:
-        description: Image analyzed successfully
-        schema:
-          type: object
-          properties:
-            status:
-              type: string
-              example: success
-            timestamp:
-              type: string
-              example: "2026-05-20T19:16:13.123456"
-            results:
-              type: object
-              description: Detailed analysis containing disease health score and growth stage boxes.
-      400:
-        description: Bad Request (No file uploaded, empty filename, or invalid image bytes)
-      500:
-        description: Internal Server Error during inference
+      202:
+        description: Task accepted for processing. Returns a task ID.
     """
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
@@ -664,22 +658,59 @@ def api_analyze():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
     try:
-        file_bytes = np.frombuffer(file.read(), np.uint8)
-        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-        if image is None:
-            return jsonify({"error": "Invalid image file"}), 400
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = analyze_image(image_rgb)
+        # Read file as bytes and convert to list for JSON serialization (Celery requirement)
+        file_bytes = np.frombuffer(file.read(), np.uint8).tolist()
+
+        # Dispatch the background task
+        task = process_inference_task.delay(file_bytes)
+
         return jsonify(
             {
-                "status": "success",
-                "timestamp": datetime.now().isoformat(),
-                "results": results,
+                "status": "processing",
+                "task_id": task.id,
+                "message": "Image analysis has started in the background. Use the task_id to poll for results.",
             }
-        )
+        ), 202
+
     except Exception as e:
-        logger.error(f"API analysis error: {e}")
+        logger.error(f"API analysis trigger error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/task/<task_id>", methods=["GET"])
+def get_task_status(task_id):
+    """
+    Check the status and retrieve results of an async analysis task.
+    ---
+    tags:
+      - API
+    parameters:
+      - name: task_id
+        in: path
+        type: string
+        required: true
+        description: The task ID returned from /api/analyze
+    responses:
+      200:
+        description: Task status and result (if completed)
+    """
+    task = process_inference_task.AsyncResult(task_id)
+
+    if task.state == "PENDING":
+        response = {"state": task.state, "status": "Task is waiting in the queue..."}
+    elif task.state != "FAILURE":
+        response = {
+            "state": task.state,
+            "status": task.info.get("status", "")
+            if isinstance(task.info, dict)
+            else task.info,
+        }
+        if task.state == "SUCCESS":
+            response["result"] = task.result
+    else:
+        response = {"state": task.state, "status": str(task.info)}
+
+    return jsonify(response)
 
 
 @app.route("/health")
@@ -753,22 +784,22 @@ def api_weather():
     lat = request.args.get("lat", type=float)
     lon = request.args.get("lon", type=float)
     city = request.args.get("city", type=str)
- 
+
     if city and not (lat and lon):
         geo = geocode_city(city)
         if not geo:
             return jsonify({"error": f"Could not geocode city: {city}"}), 404
         lat, lon = geo["lat"], geo["lon"]
- 
+
     if lat is None or lon is None:
         return jsonify({"error": "Provide lat & lon, or city"}), 400
- 
+
     owm_key = os.getenv("OPENWEATHER_API_KEY")
     weather = get_weather(lat, lon, owm_key)
- 
+
     if not weather:
         return jsonify({"error": "Weather data unavailable"}), 503
- 
+
     weather["weather_recommendations"] = generate_weather_recommendations(weather)
     return jsonify({"status": "success", "weather": weather})
 
