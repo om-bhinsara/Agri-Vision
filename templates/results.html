@@ -71,6 +71,7 @@
                 ========================================================= -->
                <li>
                     <b>Health Score:</b>
+                    {% set score = disease.health_score|default(0)|float %}{{ score|int if score == score|int else score }}%
 
                     <div class="health-bar">
                         <div class="health-fill"
@@ -78,10 +79,9 @@
                         </div>
                     </div>
 
-                    {{ disease.health_score|default(0)|float|round(2) }}%
                 </li>
 
-            <table class="results-table reveal-stagger">
+            <table class="results-table reveal-stagger" style="width: 100%;">
                 <tr class="reveal reveal-fade-in">
                     <th>Disease Class</th>
                     <th>Probability</th>
@@ -89,7 +89,7 @@
                 {% for cname, prob in disease_confidences.items() %}
                 <tr class="reveal reveal-fade-in">
                     <td>{{ cname }}</td>
-                    <td>{{ prob|default(0)|float|round(4) }}</td>
+                    <td>{{ "%.2f"|format(prob|default(0)|float) }}</td>
                 </tr>
                 {% endfor %}
             </table>
