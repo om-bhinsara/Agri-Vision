@@ -1214,14 +1214,27 @@ def set_language(lang):
 
 @app.template_filter("i18n")
 def i18n_filter(key):
-    # This filter will be implemented to use the current language stored in session or a global context
     from flask import request
-    lang = request.cookies.get('lang', 'en')
-    # Load dictionary if not already loaded (for simplicity in this app)
+    import os
     import json
-    with open('static/js/i18n.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return data.get(lang, data['en']).get(key, key)
+    
+    lang = request.cookies.get('lang', 'en')
+    
+    # Absolute path to dictionary
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, 'static', 'js', 'i18n.json')
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+        # Get language dictionary, fallback to English
+        lang_data = data.get(lang, data.get('en', {}))
+        
+        # Get the translated key, fallback to original key
+        return lang_data.get(key, data.get('en', {}).get(key, key))
+    except (Exception, FileNotFoundError):
+        return key
 
 
 @app.route("/tutorials")
@@ -1522,3 +1535,4 @@ if __name__ == "__main__":
     load_models()
     is_debug = os.getenv("FLASK_DEBUG", "False").lower() in ("true", "1", "t")
     app.run(debug=is_debug, host="0.0.0.0", port=5000)
+
