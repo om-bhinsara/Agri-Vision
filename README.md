@@ -173,6 +173,22 @@ https://universe.roboflow.com/deep-learning-nygzt/cotton-crop-dieases/browse?que
 - Yellow leaf curl virus
 
 ---
+## For Potato Crop
+The datasets used for training the potato disease classification model were taken from kaggle
+
+## Crop disease dataset (for potato)
+https://www.kaggle.com/datasets/faysalmiah1721758/potato-dataset
+
+## Health Issues Identified
+- Early Blight
+- Late Blight
+- Healthy Leaf
+
+## setup 
+Download the dataset from the given URL and make sure to split the it into training data, testing data and validation data.
+---
+
+---
 # 🤖 Model Information
 ---
 ## For cotton crop
