@@ -32,3 +32,6 @@ urllib3>=2.2.0
 # PDF/CSV Export
 reportlab>=4.0.0
 pandas>=2.0.0
+
+# Database
+flask-sqlalchemy>=3.1.0

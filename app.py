@@ -5,6 +5,7 @@ Unified inference for disease classification (ResNet50) and growth stage predict
 import hashlib
 import logging
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, send_file
+from flask_sqlalchemy import SQLAlchemy
 import os
 import random
 import re
@@ -46,9 +47,15 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+# --- Database Configuration ---
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///agri_vision.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+from models import db
+db.init_app(app)
+
 # --- Security Configuration ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limits upload size to 5MB
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Increased to 50MB for batch uploads
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -1579,6 +1586,169 @@ def api_analyze_stream():
     
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
+
+# --- Batch Processing Endpoints ---
+
+@app.route("/api/batch_upload", methods=["POST"])
+def api_batch_upload():
+    """Upload multiple images for batch analysis"""
+    try:
+        if 'files' not in request.files:
+            return jsonify({'error': 'No files uploaded'}), 400
+        
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'No files selected'}), 400
+        
+        # Validate files
+        valid_files = []
+        for file in files:
+            if file and allowed_file(file.filename):
+                valid_files.append(file)
+        
+        if not valid_files:
+            return jsonify({'error': 'No valid image files'}), 400
+        
+        # Create batch job
+        from models import BatchJob, db
+        job = BatchJob(
+            total_images=len(valid_files),
+            status='pending'
+        )
+        db.session.add(job)
+        db.session.commit()
+        
+        # Prepare image data for Celery
+        images_data = []
+        for file in valid_files:
+            file_data = file.read()
+            images_data.append((file.filename, file_data))
+        
+        # Start batch processing (try to import Celery)
+        try:
+            from celery_tasks import process_batch_job
+            process_batch_job.delay(job.id, images_data)
+            celery_enabled = True
+        except Exception as e:
+            logger.error(f"Celery not available: {e}")
+            celery_enabled = False
+            # Process synchronously if Celery is not available
+            job.status = 'processing'
+            db.session.commit()
+            
+            # Process images one by one
+            import cv2
+            import numpy as np
+            for idx, (filename, image_data) in enumerate(images_data):
+                try:
+                    file_bytes = np.frombuffer(image_data, np.uint8)
+                    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                    if image is not None:
+                        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        results = analyze_image(image_rgb)
+                        
+                        # Save result
+                        from models import AnalysisResult
+                        result = AnalysisResult(
+                            batch_job_id=job.id,
+                            image_name=filename,
+                            image_index=idx,
+                            status='complete',
+                            disease_class=results.get('disease', {}).get('predicted_class'),
+                            disease_confidence=results.get('disease', {}).get('confidence'),
+                            health_score=results.get('disease', {}).get('health_score'),
+                            growth_class=results.get('growth', {}).get('main_class'),
+                            growth_confidence=results.get('growth', {}).get('confidence'),
+                            results_json=results
+                        )
+                        db.session.add(result)
+                except Exception as e:
+                    logger.error(f"Error processing image {filename}: {e}")
+                    from models import AnalysisResult
+                    result = AnalysisResult(
+                        batch_job_id=job.id,
+                        image_name=filename,
+                        image_index=idx,
+                        status='error',
+                        error_message=str(e)
+                    )
+                    db.session.add(result)
+            
+            job.status = 'completed'
+            job.completed_at = datetime.utcnow()
+            db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'job_id': job.id,
+            'total_images': len(valid_files),
+            'celery_enabled': celery_enabled,
+            'message': f'Batch job {job.id} started with {len(valid_files)} images'
+        })
+        
+    except Exception as e:
+        logger.error(f"Batch upload error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/batch_status/<job_id>", methods=["GET"])
+def api_batch_status(job_id):
+    """Get status of a batch job"""
+    from models import BatchJob, db
+    
+    job = BatchJob.query.get(job_id)
+    if not job:
+        return jsonify({'error': 'Batch job not found'}), 404
+    
+    # Update completed count from results
+    job.completed_images = len([r for r in job.results if r.status == 'complete'])
+    job.failed_images = len([r for r in job.results if r.status == 'error'])
+    
+    # Check if all tasks are done
+    if job.completed_images + job.failed_images >= job.total_images:
+        job.status = 'completed'
+        job.completed_at = datetime.utcnow()
+        db.session.commit()
+    
+    return jsonify(job.to_dict())
+
+
+@app.route("/api/batch_results/<job_id>", methods=["GET"])
+def api_batch_results(job_id):
+    """Get all results for a batch job"""
+    from models import BatchJob, db
+    
+    job = BatchJob.query.get(job_id)
+    if not job:
+        return jsonify({'error': 'Batch job not found'}), 404
+    
+    results = [r.to_dict() for r in job.results]
+    results.sort(key=lambda x: x['image_index'])
+    
+    return jsonify({
+        'job_id': job.id,
+        'status': job.status,
+        'total_images': job.total_images,
+        'completed_images': job.completed_images,
+        'failed_images': job.failed_images,
+        'results': results
+    })
+
+
+@app.route("/batch", methods=["GET", "POST"])
+def batch_upload_page():
+    """Batch upload page"""
+    if request.method == 'POST':
+        return redirect(url_for('batch_results_page', job_id=request.form.get('job_id')))
+    return render_template('batch_upload.html')
+
+
+@app.route("/batch/results/<job_id>")
+def batch_results_page(job_id):
+    """Batch results page"""
+    return render_template('batch_results.html', job_id=job_id)
+
+
 if __name__ == '__main__':
     logger.info("=" * 60)
     logger.info("Agri-Vision Cotton Analysis System")
@@ -1591,9 +1761,15 @@ if __name__ == '__main__':
     logger.info("/comparison    - Compare two field images")
     logger.info("/dashboard     - Multi-farm comparison dashboard")
     logger.info("/demo          - View demo results")
+    logger.info("/batch         - Batch image analysis")
     logger.info("/api/analyze   - API endpoint (POST)")
     logger.info("/health        - Health check")
     logger.info("=" * 60)
+
+    # Initialize database tables
+    with app.app_context():
+        db.create_all()
+        logger.info("Database tables created")
 
     ensure_models_loaded()
     
