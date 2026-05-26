@@ -214,3 +214,11 @@ __marimo__/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# =========================================================================
+# Deep Learning Model Weights & Large Binary Framework Objects
+# =========================================================================
+*.pt
+*.pth
+*.h5
+*.onnx
