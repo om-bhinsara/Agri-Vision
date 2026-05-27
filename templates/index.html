@@ -372,8 +372,12 @@
         <div class="nav-container">
             <a href="/" class="nav-brand">
                 <i class="fas fa-seedling"></i>
-                <span>Agri-Vision</span>
+                <span data-i18n="brand_name">
+                    Agri-Vision
+                </span>
             </a>
+            <ul class="nav-menu">
+                <li><a href="/" data-i18n="home">Home</a></li>
             <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
                 <i class="fas fa-bars"></i>
             </button>
@@ -393,14 +397,30 @@
                     {% if current_user.is_researcher() %}
                         <li><a href="/model-admin" style="font-weight: bold; color: #667eea;">🤖 Admin</a></li>
                     {% endif %}
-                    <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li>
+                        <a href="/logout" style="color: #ef4444;">
+                            <i class="fas fa-sign-out-alt"></i>
+                        
+                            <span data-i18n="logout">
+                                Logout
+                            </span>
+                        </a>
+                    </li>
                 {% else %}
-                    <li><a href="/demo">Demo</a></li>
-                    <li><a href="/tutorials">Tutorials</a></li>
-                    <li><a href="/stories">Stories</a></li>
+                    <li><a href="/demo" data-i18n="demo_nav">Demo</a></li>
+                    <li><a href="/tutorials" data-i18n="tutorials">Tutorials</a></li>
+                    <li><a href="/stories" data-i18n="stories">Stories</a></li>
                     <li><a href="/login" class="btn btn-primary">Login</a></li>
                     <li><a href="/register" class="btn btn-primary" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">Sign Up</a></li>
                 {% endif %}
+                <li>
+                    <select id="languageSwitcher" class="language-switcher">
+                        <option value="en">EN</option>
+                        <option value="hi">हिं</option>
+                        <option value="mr">मराठी</option>
+                        <option value="ta">தமிழ்</option>
+                    </select>
+                </li>
                 <li>
                     <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode">
                         <i class="fas fa-moon"></i>
@@ -442,29 +462,42 @@
             <div class="hero-container">
                 <div class="hero-content">
                     <div class="hero-badge-wrapper">
-                        <span class="hero-badge">
-                            <span class="badge-dot"></span>
+                        <span class="hero-badge" data-i18n="hero_badge">                                  
                             AI-DRIVEN COTTON INTEGRATION
                         </span>
                     </div>
                 
                     <h1 class="typewriter">
-                        <span class="line1">AI-Powered</span>
-                        <span class="line2">Cotton Crop Intelligence</span>
+                        <span class="line1" data-i18n="hero_title_1">
+                            AI-Powered
+                        </span>
+                    
+                        <span class="line2" data-i18n="hero_title_2">
+                            Cotton Crop Intelligence
+                        </span>
                     </h1>
                 
-                    <p>
-                        Analyze crop maturity, detect plant health issues, and optimize
-                        harvest timing using smart real-time deep learning analytics.
+                    <p data-i18n="hero_desc">
+                        Analyze crop maturity, detect plant health issues,
+                        and optimize harvest timing using smart real-time
+                        deep learning analytics.
                     </p>
                 
                     <div class="hero-cta">
                         <a href="/analyze" class="btn btn-primary">
-                            <i class="fas fa-camera"></i> Analyze Image
+                            <i class="fas fa-camera"></i>
+
+                            <span data-i18n="analyze_btn">
+                                Analyze Image
+                            </span>
                         </a>
-                       
+                        
                         <a href="/demo" class="btn btn-secondary">
-                            <i class="fas fa-play-circle"></i> View Demo
+                            <i class="fas fa-play-circle"></i>
+
+                            <span data-i18n="demo_btn">
+                                View Demo
+                            </span>
                         </a>
                     </div>
                 </div>
@@ -521,37 +554,48 @@
 
         <section class="features-section reveal-stagger">
             <div class="section-header reveal reveal-fade-up">
-                <h2>Precision Farming Tools</h2>
-                <p>Equip yourself with state-of-the-art AI analysis specifically tuned for cotton crop cycles and common health stressors.</p>
+                <h2 data-i18n="tools_heading">
+                    Precision Farming Tools
+                </h2>
+                <p data-i18n="tools_desc">
+                    Equip yourself with state-of-the-art AI analysis
+                    specifically tuned for cotton crop cycles and
+                    common health stressors.
+                </p>
             </div>
             <div class="features-grid reveal-stagger">
                 <div class="feature-card reveal reveal-fade-up">
                     <div class="feature-icon-wrapper">
                         <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3>Growth Detection</h3>
-                    <p>Identify critical cotton growth stages from vegetative to harvest-ready with precision.</p>
+                    <h3 data-i18n="growth_detection">
+                        Growth Detection
+                    </h3>
+
+                    <p data-i18n="growth_desc">
+                        Identify critical cotton growth stages...
+                    </p>
                 </div>
                 <div class="feature-card reveal reveal-fade-up">
                     <div class="feature-icon-wrapper">
                         <i class="fas fa-heartbeat"></i>
                     </div>
-                    <h3>Health Assessment</h3>
-                    <p>Early detection of diseases and pests like Pink Bollworm before they impact your yield.</p>
+                    <h3 data-i18n="health_assessment">Health Assessment</h3>
+                    <p data-i18n="health_desc">Early detection of diseases and pests like Pink Bollworm before they impact your yield.</p>
                 </div>
                 <div class="feature-card reveal reveal-fade-up">
                     <div class="feature-icon-wrapper">
                         <i class="fas fa-brain"></i>
                     </div>
-                    <h3>Smart Diagnostics</h3>
-                    <p>Leverage deep learning models trained on thousands of cotton-specific agricultural images.</p>
+                    <h3 data-i18n="smart_diagnostics">Smart Diagnostics</h3>
+                    <p data-i18n="diagnostics_desc">Leverage deep learning models trained on thousands of cotton-specific agricultural images.</p>
                 </div>
                 <div class="feature-card reveal reveal-fade-up">
                     <div class="feature-icon-wrapper">
                         <i class="fas fa-calendar-check"></i>
                     </div>
-                    <h3>Harvest Optimizer</h3>
-                    <p>Receive data-driven recommendations on the optimal window for cotton bursting and collection.</p>
+                    <h3 data-i18n="harvest_optimizer">Harvest Optimizer</h3>
+                    <p data-i18n="harvest_desc">Receive data-driven recommendations on the optimal window for cotton bursting and collection.</p>
                 </div>
             </div>
         </section>
@@ -580,7 +624,9 @@
         <div class="footer-container">
             <div class="footer-brand">
                 <h2 class="footer-title"><i class="fas fa-leaf"></i> Agri-Vision</h2>
-                <p class="footer-subtitle">Empowering cotton farmers with AI-driven insights.</p>
+                <p class="footer-subtitle" data-i18n="footer_subtitle">
+                    Empowering cotton farmers with AI-driven insights.                    
+                </p>
             </div>
             <!-- =========================================================
                 Footer Navigation Links
@@ -595,13 +641,13 @@
                 improving overall platform usability.
             ========================================================= -->
             <div class="footer-links-compact">
-                <a href="/">Home</a>
-                <a href="/analyze">Analyze</a>
-                <a href="/comparison">Field Comparison</a>
-                <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="/demo">Demo</a>
-                <a href="/tutorials">Tutorials</a>
-                <a href="{{ url_for('support') }}">Support</a>
+                <a href="/" data-i18n="home">Home</a>
+                <a href="/analyze" data-i18n="analyze">Analyze</a>
+                <a href="/comparison" data-i18n="comparison">Field Comparison</a>
+                <a href="{{ url_for('dashboard') }}" data-i18n="dashboard">Dashboard</a>
+                <a href="/demo" data-i18n="demo_nav">Demo</a>
+                <a href="/tutorials" data-i18n="tutorials">Tutorials</a>
+                <a href="{{ url_for('support') }}" data-i18n="support">Support</a>
             </div>
         </div>
         <!-- =========================================================
@@ -659,54 +705,69 @@
     ========================================================= -->
     <script>
         document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+    <script>
 
-        // Theme Toggle Logic
-        document.addEventListener('DOMContentLoaded', () => {
-
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeIcon = document.querySelector('#theme-toggle i');
-
-            // SET DEFAULT THEME
-            if (!document.documentElement.getAttribute('data-theme')) {
-                document.documentElement.setAttribute('data-theme', 'light');
-            }
+    document.addEventListener("DOMContentLoaded", () => {
+        const themeToggleBtn =
+            document.getElementById("theme-toggle");
+    
+        function updateThemeIcon(theme) {
         
-            // LOAD SAVED THEME
-            const savedTheme = localStorage.getItem('theme');
+            const icon =
+                themeToggleBtn.querySelector("i");
         
-            if (savedTheme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                themeIcon.classList.replace('fa-moon', 'fa-sun');
+            if (theme === "dark") {
+            
+                icon.classList.remove("fa-moon");
+                icon.classList.add("fa-sun");
+            
             } else {
-                document.documentElement.setAttribute('data-theme', 'light');
-                themeIcon.classList.replace('fa-sun', 'fa-moon');
+            
+                icon.classList.remove("fa-sun");
+                icon.classList.add("fa-moon");
             }
+        }
+    
+        // Load saved theme
+        const savedTheme =
+            localStorage.getItem("theme") || "light";
+    
+        document.documentElement.setAttribute(
+            "data-theme",
+            savedTheme
+        );
+    
+        updateThemeIcon(savedTheme);
+    
+        // Toggle theme
+        themeToggleBtn.addEventListener("click", () => {
         
-            // TOGGLE BUTTON
-            themeToggleBtn.addEventListener('click', () => {
-            
-                const currentTheme =
-                    document.documentElement.getAttribute('data-theme');
-            
-                if (currentTheme === 'dark') {
-                
-                    document.documentElement.setAttribute('data-theme', 'light');
-                
-                    localStorage.setItem('theme', 'light');
-                
-                    themeIcon.classList.replace('fa-sun', 'fa-moon');
-                
-                } else {
-                
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                
-                    localStorage.setItem('theme', 'dark');
-                
-                    themeIcon.classList.replace('fa-moon', 'fa-sun');
-                }
-            });
+            const currentTheme =
+                document.documentElement.getAttribute(
+                    "data-theme"
+                );
         
+            const newTheme =
+                currentTheme === "dark"
+                ? "light"
+                : "dark";
+        
+            document.documentElement.setAttribute(
+                "data-theme",
+                newTheme
+            );
+        
+            localStorage.setItem(
+                "theme",
+                newTheme
+            );
+        
+            updateThemeIcon(newTheme);
         });
+    
+    });
+    
     </script>
     <script>
         // Navbar scroll effect
@@ -1243,10 +1304,14 @@
             </div>
             <div class="chatbot-body">
                 <div id="chat-messages" class="chat-messages">
-                    <div class="chat-message ai-message">Hello! I'm your Agri-Vision AI assistant. Ask me anything about cotton crops, farming practices, pests, or disease prevention.</div>
+                    <div class="chat-message ai-message" data-i18n="chat_welcome">
+                    Hello! I'm your Agri-Vision AI assistant.
+                    Ask me anything about cotton crops,
+                    farming practices, pests, or disease prevention.
+                    </div>                
                 </div>
                 <form id="chat-form" class="chat-input-container" autocomplete="off">
-                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" aria-label="Chat message">
+                    <input type="text" id="chat-input" data-i18n-placeholder="chat_placeholder" placeholder="Type a message..." autocomplete="off" aria-label="Chat message">
                     <button type="submit" id="chat-send-btn" class="chat-send-btn" aria-label="Send message">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -1328,5 +1393,7 @@
         });
     });
 </script>
+<script src="{{ url_for('static',
+filename='js/language.js') }}"></script>
 </body>
 </html>
