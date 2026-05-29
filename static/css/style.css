@@ -3126,3 +3126,46 @@ main{
         color: rgba(224, 224, 224, 0.8);
     }
 }
+
+/* =========================================================
+   Page Transition Animations (Swup)
+   ========================================================= */
+
+/* Default transition state (opacity fade and slight upward motion) */
+.transition-fade {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* State when Swup adds .is-animating class to html (page is leaving) */
+html.is-animating .transition-fade {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+/* State when Swup adds .is-leaving class (page is entering) */
+html.is-leaving .transition-fade {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+/* Swup Progress Bar */
+.swup-progress-bar {
+    background-color: var(--emerald-green, #2E8B57);
+    height: 3px;
+    z-index: 9999;
+}
+
+/* Accessibility: Disable transitions for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .transition-fade {
+        transition: none !important;
+        transform: none !important;
+    }
+    html.is-animating .transition-fade,
+    html.is-leaving .transition-fade {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
