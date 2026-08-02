@@ -1,0 +1,31 @@
+name: Assign Existing Open Issues
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install GitHub CLI
+        run: gh --version
+
+      - name: Assign issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --repo ${{ github.repository }} --state open --limit 1000 --json number,author \
+          | jq -c '.[]' | while read issue; do
+              number=$(echo "$issue" | jq -r '.number')
+              author=$(echo "$issue" | jq -r '.author.login')
+
+              echo "Assigning #$number to $author"
+
+              gh issue edit "$number" \
+                --repo ${{ github.repository }} \
+                --add-assignee "$author" || echo "Failed to assign $author"
+            done
